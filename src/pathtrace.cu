@@ -415,7 +415,7 @@ void pathtrace(uchar4 *pbo, int frame, int iter) {
 #else
 		StreamCompaction::Efficient::compact(grid_size, dv_f_tmp, dv_idx_tmp, dv_out_tmp, dev_grid_ptr, dv_c_tmp);
 		cudaMemcpy(&grid_size, dv_c_tmp, sizeof(int), cudaMemcpyDeviceToHost);
-		cudaMemcpy(dev_grid_ptr, dv_out_tmp, grid_size * sizeof(PathRay), cudaMemcpyDeviceToDevice);
+		//cudaMemcpy(dev_grid_ptr, dv_out_tmp, grid_size * sizeof(PathRay), cudaMemcpyDeviceToDevice);
 		checkCUDAError("efficientCompact");
 #endif USETHRUSTCOMPACTION
 

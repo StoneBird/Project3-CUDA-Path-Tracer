@@ -253,3 +253,16 @@ Depth: 5 / Grid size: 255254 / Time: 49.950497
 Depth: 6 / Grid size: 215942 / Time: 43.392319
 Depth: 7 / Grid size: 182385 / Time: 38.022335
 ```
+Directly write to input array yields better performance than thrust on smaller input sizes. However it suffers from a weird data-missing bug that 2~4 lines of pixel at 75% vertical location from top have their pixels black / missing.
+```
+Custom work-efficient w/o copying compacted result (direct write)
+800 * 800 cornell1
+Depth: 0 / Grid size: 625107 / Time: 97.728989
+Depth: 1 / Grid size: 499169 / Time: 98.561340
+Depth: 2 / Grid size: 407773 / Time: 82.963486
+Depth: 3 / Grid size: 328001 / Time: 67.584541
+Depth: 4 / Grid size: 265743 / Time: 56.771263
+Depth: 5 / Grid size: 215822 / Time: 47.858047
+Depth: 6 / Grid size: 175547 / Time: 40.745537
+Depth: 7 / Grid size: 143077 / Time: 34.973568
+```

@@ -48,9 +48,9 @@ namespace Efficient {
 		int k = blockIdx.x*blockDim.x + threadIdx.x;
 
 		if (k < n){
-			PathRay p = idata[k];
 			int f = filter[k];
 			int i = idx[k];
+			PathRay p = idata[k];
 			if (f == 1){
 				odata[i] = p;
 			}
@@ -221,7 +221,7 @@ void compact(int n, int* f, int* idx, PathRay *dv_out, PathRay *idata, int* c) {
 	scan(n, idx, f);
 
 	// Scatter
-	scatter << <tsize /2, BLOCKSIZE * 2>> >(dv_out, idata, f, idx, n);
+	scatter << <tsize /2, BLOCKSIZE * 2>> >(idata, idata, f, idx, n);
 	checkCUDAError1("SC scatter");
 
 	// Get new array size
