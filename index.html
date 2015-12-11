@@ -1,0 +1,580 @@
+<!DOCTYPE html>
+<html>
+
+  <head>
+    <meta charset='utf-8'>
+    <meta http-equiv="X-UA-Compatible" content="chrome=1">
+    <meta name="description" content="Project3-cuda-path-tracer : GPU-accelerated path tracer">
+
+    <link rel="stylesheet" type="text/css" media="screen" href="stylesheets/stylesheet.css">
+
+    <title>Project3-cuda-path-tracer</title>
+  </head>
+
+  <body>
+
+    <!-- HEADER -->
+    <div id="header_wrap" class="outer">
+        <header class="inner">
+          <a id="forkme_banner" href="https://github.com/StoneBird/Project3-CUDA-Path-Tracer">View on GitHub</a>
+
+          <h1 id="project_title">Project3-cuda-path-tracer</h1>
+          <h2 id="project_tagline">GPU-accelerated path tracer</h2>
+
+            <section id="downloads">
+              <a class="zip_download_link" href="https://github.com/StoneBird/Project3-CUDA-Path-Tracer/zipball/master">Download this project as a .zip file</a>
+              <a class="tar_download_link" href="https://github.com/StoneBird/Project3-CUDA-Path-Tracer/tarball/master">Download this project as a tar.gz file</a>
+            </section>
+        </header>
+    </div>
+
+    <!-- MAIN CONTENT -->
+    <div id="main_content_wrap" class="outer">
+      <section id="main_content" class="inner">
+        <h1>
+<a id="cuda-path-tracer" class="anchor" href="#cuda-path-tracer" aria-hidden="true"><span class="octicon octicon-link"></span></a>CUDA Path Tracer</h1>
+
+<p><strong>University of Pennsylvania, CIS 565: GPU Programming and Architecture, Project 3</strong></p>
+
+<ul>
+<li>Tongbo Sui</li>
+<li>Tested on: Windows 10, i5-3320M @ 2.60GHz 8GB, NVS 5400M 2GB (Personal)</li>
+</ul>
+
+<h2>
+<a id="overview" class="anchor" href="#overview" aria-hidden="true"><span class="octicon octicon-link"></span></a>Overview</h2>
+
+<p>A GPU based path tracer that supports several common material effects. Stream compaction performance is optimized to loosely match that of Thrust.</p>
+
+<h2>
+<a id="features" class="anchor" href="#features" aria-hidden="true"><span class="octicon octicon-link"></span></a>Features</h2>
+
+<ul>
+<li>
+<strong>Work-efficient stream compaction using shared memory</strong>
+
+<ul>
+<li>Work-efficient stream compaction for arbitrary input size.</li>
+</ul>
+</li>
+<li>
+<strong>Raycasting</strong>
+
+<ul>
+<li>Cast rays for each pixel from the camera into the scene through an imaginary grid of pixels</li>
+<li>Casting to image plane at a distance calculated from camera FOV.</li>
+</ul>
+</li>
+</ul>
+
+<h6>
+<a id="raycasting-debug-left-shows-raycasting-directions-mapped-from-xyz-to-rgb-right-shows-the-first-intersection-normal" class="anchor" href="#raycasting-debug-left-shows-raycasting-directions-mapped-from-xyz-to-rgb-right-shows-the-first-intersection-normal" aria-hidden="true"><span class="octicon octicon-link"></span></a>Raycasting debug. Left shows raycasting directions mapped from <code>(x,y,z)</code> to <code>(r,g,b)</code>. Right shows the first intersection normal.</h6>
+
+<p><img src="img/raycast_debug.png" alt=""></p>
+
+<ul>
+<li>
+<strong>Diffuse surfaces</strong>
+
+<ul>
+<li>Cosine weighted diffuse reflection.</li>
+</ul>
+</li>
+</ul>
+
+<h6>
+<a id="diffuse-and-perfect-specular-surfaces-the-perfect-specular-shown-in-this-image-is-incorrect-its-been-replaced-by-non-perfect-specular-implementation" class="anchor" href="#diffuse-and-perfect-specular-surfaces-the-perfect-specular-shown-in-this-image-is-incorrect-its-been-replaced-by-non-perfect-specular-implementation" aria-hidden="true"><span class="octicon octicon-link"></span></a>Diffuse and perfect specular surfaces. The perfect specular shown in this image is incorrect. It's been replaced by non-perfect specular implementation.</h6>
+
+<p><img src="img/diff_spec.png" alt=""></p>
+
+<ul>
+<li>
+<strong>Non-perfect specular surfaces</strong>
+
+<ul>
+<li>Cosine weighted reflection restricted by specular exponent. Perfectly specular-reflective (mirrored) surfaces would be a non-perfect surface with very large (toward positive infinity) specular exponent.</li>
+<li>Instead of trying to find a biased function, simply jitter the reflection normal.
+
+<ul>
+<li><a href="http://www.cs.cornell.edu/courses/cs4620/2012fa/lectures/37raytracing.pdf">http://www.cs.cornell.edu/courses/cs4620/2012fa/lectures/37raytracing.pdf</a></li>
+</ul>
+</li>
+<li>
+<em>Performance impact</em>: about twice as many as computations needed. Execution time almost doubled.</li>
+<li>
+<em>If on CPU</em>: looping through each pixel would have <code>O(n)</code> time with some constant <code>c</code>. This extra effect will increase <code>c</code> by at least 2x.</li>
+<li>
+<em>Possible further optimization</em>: faster method for randomizing bounce direction; a better weight function for combining all possible effects.</li>
+</ul>
+</li>
+</ul>
+
+<h6>
+<a id="non-perfect-specular-surfaces-higher-specular-exponent-yields-clearer-reflection-images" class="anchor" href="#non-perfect-specular-surfaces-higher-specular-exponent-yields-clearer-reflection-images" aria-hidden="true"><span class="octicon octicon-link"></span></a>Non-perfect specular surfaces. Higher specular exponent yields clearer reflection images.</h6>
+
+<p><img src="img/specs.png" alt=""></p>
+
+<ul>
+<li>
+<strong>Refraction with Frensel effects</strong>
+
+<ul>
+<li>Refraction based on Index of Refraction (IOR), with reflection intensity approximated using Schlick's approximation.
+
+<ul>
+<li><a href="https://en.wikipedia.org/wiki/Schlick's_approximation">https://en.wikipedia.org/wiki/Schlick's_approximation</a></li>
+</ul>
+</li>
+<li>
+<em>Performance impact</em>: extra calculations are needed as it calculates all possible effects for the material.</li>
+<li>
+<em>If on CPU</em>: looping through each pixel would have <code>O(n)</code> time with some constant <code>c</code>. This extra effect increases the constant <code>c</code> dramatically, as it calculates both reflection and refraction, and split the iteration among diffuse, SSS, reflection, refraction.</li>
+<li>
+<em>Possible further optimization</em>: faster method for randomizing bounce direction.</li>
+</ul>
+</li>
+</ul>
+
+<h6>
+<a id="refractions-higher-ior-results-in-more-distorted-images" class="anchor" href="#refractions-higher-ior-results-in-more-distorted-images" aria-hidden="true"><span class="octicon octicon-link"></span></a>Refractions. Higher IOR results in more distorted images.</h6>
+
+<p><img src="img/ior_comparision.png" alt=""></p>
+
+<ul>
+<li>
+<strong>Subsurface scattering (SSS)</strong>
+
+<ul>
+<li>Propagates light under object skin and send them off in randomized directions with an offset.</li>
+</ul>
+</li>
+</ul>
+
+<h6>
+<a id="subsurface-scatteringsss-object-thickness-and-distance-to-light-source-are-two-major-factors-of-sss-intensity" class="anchor" href="#subsurface-scatteringsss-object-thickness-and-distance-to-light-source-are-two-major-factors-of-sss-intensity" aria-hidden="true"><span class="octicon octicon-link"></span></a>Subsurface scattering(SSS). Object "thickness" and distance to light source are two major factors of SSS intensity.</h6>
+
+<p><img src="img/sss_comparison.png" alt=""></p>
+
+<ul>
+<li>SSS for reflective material is also implemented.</li>
+</ul>
+
+<h6>
+<a id="subsurface-scatteringsss-with-reflections-materials-are-combined-to-produce-the-end-result" class="anchor" href="#subsurface-scatteringsss-with-reflections-materials-are-combined-to-produce-the-end-result" aria-hidden="true"><span class="octicon octicon-link"></span></a>Subsurface scattering(SSS) with reflections. Materials are combined to produce the end result.</h6>
+
+<p><img src="img/sss_refl_comparison.png" alt=""></p>
+
+<ul>
+<li>
+<em>Optimization</em>:
+
+<ul>
+<li>Implementation is a simplified version of Dipole approximation.
+
+<ul>
+<li><a href="https://graphics.stanford.edu/papers/bssrdf/bssrdf.pdf">https://graphics.stanford.edu/papers/bssrdf/bssrdf.pdf</a></li>
+</ul>
+</li>
+<li>Actual accurate SSS calculation would involve passing geometry object into the function and performing multiple extra intersection tests. This slows the entire rendering process by a factor of ~3. Major reason is that the geometry object is big in memory, and intersection tests are slow.</li>
+<li>Reduced memory overhead by guessing ray-out position. Therefore intersection tests are not performed within the scatter method. Passing geometry all the way into scatter function is avoided.</li>
+<li>If the guessed position is still inside the object (when it should be outside), it will be catched at the next trace depth, where the intersection point is automatically available. Color is multiplied by a factor to cancel out guessing failures.</li>
+</ul>
+</li>
+<li>
+<em>Performance impact</em>: like other material effects, it increases color calculation by a constant time due to extra computation on each pixel. Moreover, all extra material effects add execution time for the kernel. Due to the fact that warps can only execute all codes then mask out unwanted results, each additional effect equally add more tasks to each thread. Taking all effects (specular, refraction, SSS) in to account, the execution time increased by about 400% compared to a diffuse-only implementation.</li>
+<li>
+<em>If on CPU</em>: looping through each pixel would have <code>O(n)</code> time with some constant <code>c</code>. This extra effect increases the constant <code>c</code> over the loop.</li>
+<li>
+<em>Possible further optimization</em>: a better weight function rather than split 50/50.</li>
+</ul>
+
+<h6>
+<a id="more-sss-object-thickness-and-distance-to-light-source-are-two-major-factors-of-sss-intensity-below-shows-results-from-multiple-distances-thickness-is-more-or-less-conceptually-equivalent-to-unlit-sides-distance-to-light-source" class="anchor" href="#more-sss-object-thickness-and-distance-to-light-source-are-two-major-factors-of-sss-intensity-below-shows-results-from-multiple-distances-thickness-is-more-or-less-conceptually-equivalent-to-unlit-sides-distance-to-light-source" aria-hidden="true"><span class="octicon octicon-link"></span></a>More SSS. Object "thickness" and distance to light source are two major factors of SSS intensity. Below shows results from multiple distances. "Thickness" is more or less conceptually equivalent to unlit side's distance to light source.</h6>
+
+<p><img src="img/sss_fun.png" alt=""></p>
+
+<ul>
+<li>
+<strong>Antialiasing</strong>
+
+<ul>
+<li>Oversampling at each iteration to smooth out jagged edges in the render.</li>
+<li>
+<em>Performance impact</em>: Effectively increases render time; proportional to # of oversampling passes. At each sampling pass, the jittering kernel takes ~440 microsec to finish. Plus oversampling needs averaging, which takes ~140 microseconds For a 3-pass render the overhead will be ~1460 microseconds per iteration. Furthermore, each pass runs the entire tracing once, therefore the final execution time for a 3-pass render will be at least 3x the normal tracing time plus overhead.</li>
+<li>
+<em>If on CPU</em>: aside from initializing each ray in the beginning, a CPU version would loop again at each pixel to randomize the ray, which is <code>O(n)</code>. On a GPU each thread takes care of one pixel, which makes the process run in constant time.</li>
+<li>
+<em>Possible further optimization</em>: same as antialiasing since they use the same routine.</li>
+</ul>
+</li>
+</ul>
+
+<h6>
+<a id="antialiasing-comparison-notice-the-jagged-refraction-on-the-right" class="anchor" href="#antialiasing-comparison-notice-the-jagged-refraction-on-the-right" aria-hidden="true"><span class="octicon octicon-link"></span></a>Antialiasing comparison. Notice the jagged refraction on the right.</h6>
+
+<p><img src="img/antialiasing_comparison.png" alt=""></p>
+
+<ul>
+<li>
+<strong>Physically-based depth-of-field</strong>
+
+<ul>
+<li>Depth-of-field effect using antialiasing routines but with different jittering radius and method.</li>
+<li>
+<em>Performance impact</em>: same as antialiasing since they use the same routine.</li>
+<li>
+<em>If on CPU</em>: same as antialiasing.</li>
+<li>
+<em>Possible further optimization</em>: same as antialiasing.</li>
+</ul>
+</li>
+</ul>
+
+<h6>
+<a id="depth-of-field-comparison-objects-outside-the-focal-plane-are-blurred" class="anchor" href="#depth-of-field-comparison-objects-outside-the-focal-plane-are-blurred" aria-hidden="true"><span class="octicon octicon-link"></span></a>Depth-of-field comparison. Objects outside the focal plane are blurred.</h6>
+
+<p><img src="img/dof_comparison.png" alt=""></p>
+
+<h2>
+<a id="analysis" class="anchor" href="#analysis" aria-hidden="true"><span class="octicon octicon-link"></span></a>Analysis</h2>
+
+<ul>
+<li>
+<p>Cache vs. direct access:</p>
+
+<ul>
+<li>Creating a temporary variable for caching elements in large arrays is not always effective in CUDA kernels. In fact, sometimes directly passing the array element around results in much better performance in terms of both exec time and memory access.</li>
+<li>For example, caching a <code>(ray, color)</code> pair for later computation only reduces performance in long computations such as intersection test. On the other hand, caching geometries for repetitive access across different threads increases performance. However, a caching variable increases performance in simple and short kernels like pixel painting.</li>
+<li>The rational is that for long kernels, register resources are often depleted easily. A "cache" variable in this case would further worsen the situation by taking up a lot of registers in the first hand, leaving much less registers for the rest of the computations. On the other hand, long kernels tend to fill up the register limitation, causing much less warps available to run in parallel. Less warps means less chance to hide memory access latency.</li>
+<li>This effectively cancelled out the reduction in memory access. For short kernels, a cache variable sometimes can successfully hide memory access latency by carefully ordering operation orders.</li>
+</ul>
+</li>
+<li>
+<p>Stream compaction, open scenes vs. closed scenes:</p>
+
+<ul>
+<li>Stream compaction greatly reduces input size in open scenes.</li>
+<li>Open scene renders much faster. More rays got terminated due to rays shooting side ways are off to the ambient and thus no hits.</li>
+<li>Closed scene renders much slower. Less rays got terminated because all rays will hit at least a wall, if not a light source.
+
+<ul>
+<li>As a result, closed scene is much brighter.</li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+
+<h6>
+<a id="open-vs-closed-scene-closed-scene-has-many-more-active-unterminated-rays-in-each-depth" class="anchor" href="#open-vs-closed-scene-closed-scene-has-many-more-active-unterminated-rays-in-each-depth" aria-hidden="true"><span class="octicon octicon-link"></span></a>Open vs. closed scene. Closed scene has many more active (unterminated) rays in each depth.</h6>
+
+<p><img src="img/ray_count.png" alt=""></p>
+
+<ul>
+<li>Thrust vs. custom work-efficient compaction:
+
+<ul>
+<li>Thrust is still faster performance-wise.</li>
+<li>Custom implementation only loosely match the performance of Thrust (~5ms slower per trace depth).</li>
+<li>Interestingly, the performance gap doesn't seem to change a lot with varying input size. Perhaps the bottlenecks are some fixed calculations that are sub-optimal.</li>
+</ul>
+</li>
+</ul>
+
+<h6>
+<a id="stream-compaction-performance-time-is-for-a-complete-trace-intersection-test-paint-stream-compaction-scatter-difference-is-the-stream-compaction-performance-difference" class="anchor" href="#stream-compaction-performance-time-is-for-a-complete-trace-intersection-test-paint-stream-compaction-scatter-difference-is-the-stream-compaction-performance-difference" aria-hidden="true"><span class="octicon octicon-link"></span></a>Stream compaction performance. Time is for a complete trace (intersection test, paint, stream compaction, scatter). Difference is the stream compaction performance difference.</h6>
+
+<p><img src="img/comparison_new.png" alt=""></p>
+
+<h2>
+<a id="optimization" class="anchor" href="#optimization" aria-hidden="true"><span class="octicon octicon-link"></span></a>Optimization</h2>
+
+<p><strong>Baseline: <code>cornell6</code>, 200*200, scan block size 64</strong></p>
+
+<ul>
+<li>
+<strong>Scan</strong>
+
+<ul>
+<li>Occupacy with block size
+
+<ul>
+<li>Block size needs to be <code>2^n</code>: pick 128 based on graph prediction, occupacy goes from 33.3% to 41.28%</li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+
+<h6>
+<a id="occupacy-as-a-function-of-block-size" class="anchor" href="#occupacy-as-a-function-of-block-size" aria-hidden="true"><span class="octicon octicon-link"></span></a>Occupacy as a function of block size.</h6>
+
+<p><img src="img/scan_occupacy.png" alt=""></p>
+
+<ul>
+<li>Occupacy with register counts: wasn't able to reduce register count, but reduced execution time.
+
+<ul>
+<li>Remove shorthand variable for <code>threadIdx.x</code>:
+
+<ul>
+<li>No effect (should have used one less register).</li>
+</ul>
+</li>
+<li>Store <code>threadIdx-1</code> to avoid repetitive calculations:
+
+<ul>
+<li>No effect on registers</li>
+<li>Reduced execution time from ~7700 to ~4000 microsec.</li>
+</ul>
+</li>
+<li>Change loop ceiling <code>ilog2ceil(n)</code> to a compile-time constant:
+
+<ul>
+<li>No visible effect, but two less calculations per thread.</li>
+</ul>
+</li>
+<li>Pre-populate <code>2^d</code> values in shared memory:
+
+<ul>
+<li>No effect on registers</li>
+<li>Reduced execution time from ~4000 to ~330 microsec.</li>
+</ul>
+</li>
+<li>
+<em>Conclusion</em>:
+
+<ul>
+<li>Execution time: dropped from ~7700 to ~330 microsec; 23x speed up.</li>
+<li>Trade-off: achieved occupacy dropped from 41.28% to 40.6%</li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+
+<ul>
+<li>
+<strong>Scan scatter (stream compaction)</strong>
+
+<ul>
+<li>Changed block size based on profiling tool prediction:
+
+<ul>
+<li>Occupacy goes from 33.3% to 100%</li>
+</ul>
+</li>
+<li>Put extra temporary variables to hold array elements to be used later
+
+<ul>
+<li>Successfully utilized larger number of warps and hid memory access latency</li>
+<li>In issue stall reasons, reduced proportion of memory dependency from 70% to 26.4%</li>
+<li>1.92x execution time speed up</li>
+<li>Trade-off: occupacy dropped to 83.3%</li>
+</ul>
+</li>
+</ul>
+</li>
+<li>
+<strong>Intersection test</strong>
+
+<ul>
+<li>Block size left unchanged as it's optimal.</li>
+<li>Pre-cache geometries in shared memory:
+
+<ul>
+<li>Reduced access to device memory by 30% in data size, without obvious change in execution time.
+
+<ul>
+<li>Higher L1 cache hitrate as a result.</li>
+<li>In some cases execution becomes faster but the improvement is not consistent.</li>
+</ul>
+</li>
+<li>LIMITATION: Current code allows only 64 geometries in the shared memory, which is equal to the block size; this is fine for non-mesh geometries and less than 64 geometries. For bigger scenes, extra codes for loading more geometries will be needed for it to work. The extra codes shouldn't be hard, but would have an obvious impact on the performance due to more memory access.</li>
+</ul>
+</li>
+<li>Move temporary variable declarations out of for-loop; change all parameters of intersection test to pass by reference:
+
+<ul>
+<li>On top of above memory improvement, further reduced access to device memory by 30% in data size.
+
+<ul>
+<li>However, this only reduces access to thread's temporary variables. Therefore the reduction might not scale with scene window size.</li>
+</ul>
+</li>
+<li>1.15x speed up on execution time (~200 microsec).
+
+<ul>
+<li>The speed up and memory improvement are cancelled if the methods called by intersection tests also have all of their parameters passed by reference.</li>
+</ul>
+</li>
+</ul>
+</li>
+<li>Remove temporary variable that stores <code>(ray, color)</code> pair, which is stored as a struct:
+
+<ul>
+<li>Contrary to the belief that the temporary variable is caching and is faster, direct access is actually better.</li>
+<li>Further reduced device memory access by 40%</li>
+<li>Further reduced execution time by ~150 microsec.</li>
+<li>Reduced register count by 1.</li>
+<li>Increased L1 cache hitrate: from 65% to 85%</li>
+<li>Trade-off: increased global memory replay overhead from 25% to 34.7%</li>
+</ul>
+</li>
+</ul>
+</li>
+<li>
+<strong>Ray scatter</strong>
+
+<ul>
+<li>Remove temporary variable that stores <code>(ray, color)</code> pair:
+
+<ul>
+<li>Reduced register count: from 63 to 55.</li>
+<li>1.63x execution time speed up.</li>
+<li>50% less device memory access (data size).</li>
+<li>Increased L2 cache hitrate: from 31.6% to 40.6%</li>
+<li>Reduced global memory replay overhead: from 49.2% to 39.3%</li>
+</ul>
+</li>
+<li>Refactor <code>scatterRay</code> to remove redundant parameters:
+
+<ul>
+<li>Minor improvements regarding items above.</li>
+</ul>
+</li>
+</ul>
+</li>
+<li>
+<strong>Path termination</strong>
+
+<ul>
+<li>Remove temporary variable for <code>(ray, color)</code> pair and material:
+
+<ul>
+<li>Reduced register count: from 29 to 12.</li>
+<li>5.86x execution time speed up.</li>
+<li>Trade-off: high global memory replay overhead (47.5%)</li>
+</ul>
+</li>
+</ul>
+</li>
+<li>
+<strong>Camera raycasting</strong>
+
+<ul>
+<li>Remove temporary variable for <code>(ray, color)</code> pair:
+
+<ul>
+<li>1.5x execution time speed up.</li>
+</ul>
+</li>
+</ul>
+</li>
+<li>
+<code>nvprof</code>
+
+<ul>
+<li>Some thoughts were put on reducing overall execution time of stream compaction by working on the methods outside of kernels.</li>
+<li>More analysis on API calls showed that calls to <code>cudaMalloc</code> and <code>cudaFree</code> are the most time consuming ones. Removing excessive calls to these APIs in the stream compaction method reduces overall execution time by ~15 ms (first trace depth).</li>
+<li>Overall performance is improved by a considerable amount by simply reducing calls to CUDA memory operations.</li>
+</ul>
+</li>
+</ul>
+
+<h6>
+<a id="optimization-baseline" class="anchor" href="#optimization-baseline" aria-hidden="true"><span class="octicon octicon-link"></span></a>Optimization baseline.</h6>
+
+<p><img src="img/baseline.png" alt=""></p>
+
+<h6>
+<a id="optimized-result" class="anchor" href="#optimized-result" aria-hidden="true"><span class="octicon octicon-link"></span></a>Optimized result.</h6>
+
+<p><img src="img/optimized_new.png" alt=""></p>
+
+<h2>
+<a id="appendix" class="anchor" href="#appendix" aria-hidden="true"><span class="octicon octicon-link"></span></a>Appendix</h2>
+
+<h3>
+<a id="scenes-list" class="anchor" href="#scenes-list" aria-hidden="true"><span class="octicon octicon-link"></span></a>Scenes list</h3>
+
+<ul>
+<li>
+<code>cornell1</code>: mixed objects (specular, refraction, diffuse, caustic)</li>
+<li>
+<code>cornell2</code>: SSS, same size spheres, mixed distances to light</li>
+<li>
+<code>cornell3</code>: SSS + specular</li>
+<li>
+<code>cornell4</code>: SSS, same size cubes, mixed distances to light</li>
+<li>
+<code>cornell5</code>: mixed objects, closed scene, camera inside box</li>
+<li>
+<code>cornell6</code>: single sphere, very small window size, for optimization testing</li>
+</ul>
+
+<h3>
+<a id="performance-test-data" class="anchor" href="#performance-test-data" aria-hidden="true"><span class="octicon octicon-link"></span></a>Performance test data</h3>
+
+<pre><code>Open scene
+800 * 800 cornell1
+Depth: 0 / Grid size: 625125
+Depth: 1 / Grid size: 497276
+Depth: 2 / Grid size: 406024
+Depth: 3 / Grid size: 326613
+Depth: 4 / Grid size: 264707
+Depth: 5 / Grid size: 214660
+Depth: 6 / Grid size: 174592
+Depth: 7 / Grid size: 141986
+</code></pre>
+
+<pre><code>Closed scene
+800 * 800 cornell5
+Depth: 0 / Grid size: 624854
+Depth: 1 / Grid size: 608350
+Depth: 2 / Grid size: 592705
+Depth: 3 / Grid size: 579828
+Depth: 4 / Grid size: 568568
+Depth: 5 / Grid size: 558072
+Depth: 6 / Grid size: 547953
+Depth: 7 / Grid size: 538102
+</code></pre>
+
+<pre><code>Custom work-efficient stream compaction
+800 * 800 cornell1
+Depth: 0 / Grid size: 625107 / Time: 97.423164
+Depth: 1 / Grid size: 511896 / Time: 99.192924
+Depth: 2 / Grid size: 434527 / Time: 84.930527
+Depth: 3 / Grid size: 359734 / Time: 73.663490
+Depth: 4 / Grid size: 303851 / Time: 62.820320
+Depth: 5 / Grid size: 255227 / Time: 54.307522
+Depth: 6 / Grid size: 216026 / Time: 47.650337
+Depth: 7 / Grid size: 182477 / Time: 41.597088
+</code></pre>
+
+<pre><code>Thrust
+800 * 800 cornell1
+Depth: 0 / Grid size: 625107 / Time: 92.244354
+Depth: 1 / Grid size: 512883 / Time: 94.210144
+Depth: 2 / Grid size: 435087 / Time: 80.382782
+Depth: 3 / Grid size: 359297 / Time: 67.422592
+Depth: 4 / Grid size: 303702 / Time: 57.761951
+Depth: 5 / Grid size: 255254 / Time: 49.950497
+Depth: 6 / Grid size: 215942 / Time: 43.392319
+Depth: 7 / Grid size: 182385 / Time: 38.022335
+</code></pre>
+      </section>
+    </div>
+
+    <!-- FOOTER  -->
+    <div id="footer_wrap" class="outer">
+      <footer class="inner">
+        <p class="copyright">Project3-cuda-path-tracer maintained by <a href="https://github.com/StoneBird">StoneBird</a></p>
+        <p>Published with <a href="https://pages.github.com">GitHub Pages</a></p>
+      </footer>
+    </div>
+
+    
+
+  </body>
+</html>
